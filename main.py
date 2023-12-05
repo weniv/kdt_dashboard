@@ -235,4 +235,6 @@ with tab_rank:
        '고용보험 6개월 취업률', '훈련 과정 순차', '등급', '훈련 대상', '주소',
        '전화번호', '제목 링크', '부제목 링크']
     df = df[columns] 
+    df = df.reset_index()
+
     st.dataframe(df)
