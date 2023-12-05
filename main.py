@@ -72,12 +72,6 @@ def list_api_param(i,start_date,end_date,tr_option,tr_name,tr_company):
     result = result['srchList']
 
     df = pd.DataFrame(result)
-    columns = ['traStartDate','traEndDate','subTitle','title','regCourseMan','yardMan','courseMan','realMan', 
-               'eiEmplCnt3', 'eiEmplRate3', 'eiEmplRate6', 'trprDegr','grade','trainTarget','address','telNo',
-               'titleLink','subTitleLink']
-
-    df = df.reset_index()
-    df = df[columns]
     new_column_names = {
         'traStartDate':'훈련 시작일',
         'traEndDate': '훈련 종료일',
@@ -229,6 +223,7 @@ with tab_rank:
             tr_company = st.text_input('',placeholder='훈련 기관명을 입력해주세요.',label_visibility='collapsed')
             tr_company = quote(tr_company, safe='')
 
-
     df = list_api(tr_open[0],tr_open[1],tr_option_codes,tr_name,tr_company)
+    df = df.drop(['eiEmplCnt3Gt10','ncsCd','instCd','trngAreaCd','trprId','trainTargetCd',
+                  'trainstCstId','contents','titleIcon'],axis=1)
     st.dataframe(df)
