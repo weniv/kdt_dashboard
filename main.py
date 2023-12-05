@@ -166,10 +166,10 @@ with tab_weniv:
 with tab_rank:
     with st.expander("옵션 선택"):
         s_col1_1, s_col1_2 = st.columns((4, 6), gap = 'large')
-        s_col1_1.write('개강 시작/종료일 : ')
+        s_col1_1.write('개강 시작일 : ')
         with s_col1_2:
             tr_open = st.date_input("",[datetime.date.today(), datetime.date.today()+datetime.timedelta(days=30)],label_visibility='collapsed')
-
+        
         s_col2_1, s_col2_2 = st.columns((4, 6), gap = 'large')
         s_col2_1.write('훈련 유형 : ')
         with s_col2_2:
@@ -222,8 +222,17 @@ with tab_rank:
         with s_col4_2:
             tr_company = st.text_input('',placeholder='훈련 기관명을 입력해주세요.',label_visibility='collapsed')
             tr_company = quote(tr_company, safe='')
+    try:
+        df = list_api(tr_open[0],tr_open[1],tr_option_codes,tr_name,tr_company)
+    except IndexError:
+        tr_open = (datetime.date.today(),datetime.date.today())
+        df = list_api(tr_open[0],tr_open[1],tr_option_codes,tr_name,tr_company)
 
-    df = list_api(tr_open[0],tr_open[1],tr_option_codes,tr_name,tr_company)
     df = df.drop(['eiEmplCnt3Gt10','ncsCd','instCd','trngAreaCd','trprId','trainTargetCd',
                   'trainstCstId','contents','titleIcon'],axis=1)
+    columns  = ['훈련 시작일', '훈련 종료일', '기업명', '제목', '수강신청 인원',
+       '정원', '수강비', '실제 훈련비', '고용보험 3개월 취업인원 수', '고용보험 3개월 취업률',
+       '고용보험 6개월 취업률', '훈련 과정 순차', '등급', '훈련 대상', '주소',
+       '전화번호', '제목 링크', '부제목 링크']
+    df = df[columns] 
     st.dataframe(df)
