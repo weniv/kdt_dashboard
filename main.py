@@ -31,7 +31,7 @@ tab_weniv, tab_rank = st.tabs(['위니브 KDT 목록', 'KDT 목록'])
 def list_api(start_date, end_date, tr_option, tr_name, tr_company):
     df = pd.DataFrame({})
 
-    for i in range(1,11):
+    for i in range(1,6):
         df_new,x = list_api_param(i,start_date,end_date,tr_option,tr_name,tr_company)
         df = pd.concat([df,df_new])
     
@@ -72,8 +72,9 @@ def list_api_param(i,start_date,end_date,tr_option,tr_name,tr_company):
     result = result['srchList']
 
     df = pd.DataFrame(result)
-    columns = ['traStartDate','traEndDate','subTitle','title','regCourseMan','yardMan','courseMan',
-               'realMan', 'eiEmplCnt3']
+    columns = ['traStartDate','traEndDate','subTitle','title','regCourseMan','yardMan','courseMan','realMan', 
+               'eiEmplCnt3', 'eiEmplRate3', 'eiEmplRate6', 'trprDegr','grade','trainTarget','address','telNo',
+               'titleLink','subTitleLink']
 
     df = df.reset_index()
     df = df[columns]
@@ -87,7 +88,7 @@ def list_api_param(i,start_date,end_date,tr_option,tr_name,tr_company):
         'courseMan':'수강비',
         'realMan':'실제 훈련비',
         'eiEmplCnt3': '고용보험 3개월 취업인원 수',
-        'eimplRate3': '고용보험 3개월 취업률',
+        'eiEmplRate3': '고용보험 3개월 취업률',
         'eiEmplRate6': '고용보험 6개월 취업률',
         'trprDegr': '훈련 과정 순차',
         'grade':'등급',
