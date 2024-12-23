@@ -5,6 +5,11 @@ import json
 import datetime
 from urllib.parse import quote
 
+service_key = {
+    'ntlc_train' : '9f62fae1-f506-4e5a-be77-ff5385d09f23', # 국민내일배움카드 훈련과정	
+    'Common_code' : 'f6060adb-d75b-4fb6-9985-2265a3b7e6b5', # 공통코드	
+    'nhrdc_train' : '95017e88-6410-4fd4-b2ac-d45d20b0e709', # 국가인적자원개발 컨소시엄 훈련과정	
+}
 
 # --------------------[기본 UI 구성]--------------------
 st.set_page_config(
@@ -24,7 +29,7 @@ with col2:
 with col3:
     st.write('')
 
-tab_weniv, tab_rank = st.tabs(['위니브 KDT 목록', 'KDT 목록'])
+tab_rank, tab_weniv, tab_est = st.tabs(['KDT 목록','위니브 KDT 목록','이스트 KDT 목록'])
 
 # --------------------[데이터 관련]--------------------
 # 목록 API 불러오기    
@@ -44,12 +49,12 @@ def list_api(start_date, end_date, tr_option, tr_name, tr_company):
 #         df = pd.concat([df,df_new])
 
 def list_api_param(i,start_date,end_date,tr_option,tr_name,tr_company):
-    list_url = 'https://www.hrd.go.kr/jsp/HRDP/HRDPO00/HRDPOA60/HRDPOA60_1.jsp'
+    list_url = 'https://www.work24.go.kr/cm/openApi/call/hr/callOpenApiSvcInfo310L01.do'
 
     params ={
-        'authKey' : 'wxIQpuDgcncKjd3VE23AgBwRHGfm5sqd',
+        'authKey' : '9f62fae1-f506-4e5a-be77-ff5385d09f23',
         'returnType':'JSON',
-        'outType':1, # 1: 리스트, 2:상세 출력
+        'outType':2, # 1: 리스트, 2:상세 출력
         'pageNum':i, 
         'pageSize':100, 
         'srchTraStDt':start_date.strftime("%Y%m%d"),
@@ -66,10 +71,10 @@ def list_api_param(i,start_date,end_date,tr_option,tr_name,tr_company):
     response = requests.get(list_url, params=params)
     content = response.json()
 
-    result = content.get('returnJSON')
-    result = json.loads(result)
-    data_count = result['scn_cnt']
-    result = result['srchList']
+    # result = content.get('returnJSON')
+    # result = json.loads(result)
+    data_count = content['scn_cnt']
+    result = content['srchList']
 
     df = pd.DataFrame(result)
     new_column_names = {
@@ -92,17 +97,18 @@ def list_api_param(i,start_date,end_date,tr_option,tr_name,tr_company):
         'titleLink':'제목 링크',
         'subTitleLink':'부제목 링크'
     }
+
     df = df.rename(columns=new_column_names)
     return df,data_count
 
 # --------------------[위니브 KDT List]--------------------
 def weniv_list_api(name):
-    list_url = 'https://www.hrd.go.kr/jsp/HRDP/HRDPO00/HRDPOA60/HRDPOA60_1.jsp'
+    list_url = 'https://www.work24.go.kr/cm/openApi/call/hr/callOpenApiSvcInfo310L01.do'
     
     params ={
-        'authKey' : 'wxIQpuDgcncKjd3VE23AgBwRHGfm5sqd',
+        'authKey' : '9f62fae1-f506-4e5a-be77-ff5385d09f23',
         'returnType':'JSON',
-        'outType':1, #  - 1: 리스트, 2:상세 출력
+        'outType':2, #  - 1: 리스트, 2:상세 출력
         'pageNum':1, 
         'pageSize':100, 
         'srchTraStDt':(datetime.date.today()-datetime.timedelta(days=150)+datetime.timedelta(hours=9)).strftime("%Y%m%d"),
@@ -115,14 +121,14 @@ def weniv_list_api(name):
     response = requests.get(list_url, params=params)
     content = response.json()
 
-    result = content.get('returnJSON')
-    result = json.loads(result)
-    result = result['srchList']
+    # result = content.get('returnJSON')
+    # result = json.loads(result)
+    result = content['srchList']
 
     df = pd.DataFrame(result)
     return df
 
-list_kdt_name = ['[스마트훈련]데이터 사이언티스트 실무과정','ESTsoft 백엔드 개발자 양성 과정']
+list_kdt_name = ['[스마트훈련]초거대/생성 모델 활용 AI서비스 개발자 실무과정','[이스트캠프] 오르미 프론트엔드 개발(React, HTML/CSS/JavaScript)', '러닝스푼즈 테크런 : 데이터 PM']
 
 weniv_kdt_list=pd.DataFrame({}, columns=[''])
 
@@ -146,29 +152,33 @@ new_column_names = {
 }
 weniv_kdt_list = weniv_kdt_list.rename(columns=new_column_names)
 
+# --------------------[이스트 KDT List]--------------------
+# est_kdt_list =list_api(tr_open[0],tr_open[1],tr_option_codes,tr_name,'이스트소프트')
+
+# columns = ['traStartDate','traEndDate','subTitle','title','regCourseMan','yardMan','courseMan','realMan']
+# est_kdt_list = est_kdt_list.reset_index()
+# est_kdt_list = est_kdt_list[columns]
+# new_column_names = {
+#     'traStartDate':'훈련 시작일',
+#     'traEndDate': '훈련 종료일',
+#     'subTitle':'기업명',
+#     'title':'제목',
+#     'regCourseMan':'수강신청 인원',
+#     'yardMan':'정원',
+#     'courseMan':'수강비',
+#     'realMan':'실제 훈련비',
+# }
+# est_kdt_list = est_kdt_list.rename(columns=new_column_names)
+
+
 # --------------------[데이터 시각화]--------------------
-with tab_weniv:
-    # 선택 위젯 레이아웃 설정
-    # _, s_col1, _, s_col2 = st.columns((3.8, 1.2, 4, 1), gap = 'large')
-    # col1, col2 = st.columns(2, gap = 'large')
-    
-    # with col1:
-    #     col1_1, col1_2, col1_3 = st.columns(3)
-    #     col1_1.metric(label="달러USD", value="1,276.20 원", delta="-12.00원")
-    #     col1_2.metric(label="일본JPY", value="958.63 원", delta="-7.44 원")
-    #     col1_3.metric(label="유럽연합EUR", value="1,335.82 원", delta="11.44 원")
-    
-    # with col2:
-    #     pass
-
-    st.dataframe(weniv_kdt_list, use_container_width=True)
-
-with tab_rank:
+def eda(key_suffix, show_company=True):
     with st.expander("옵션 선택"):
         s_col1_1, s_col1_2 = st.columns((4, 6), gap = 'large')
         s_col1_1.write('개강 시작일 : ')
         with s_col1_2:
-            tr_open = st.date_input("",[datetime.date.today(), datetime.date.today()+datetime.timedelta(days=30)],label_visibility='collapsed')
+            tr_open = st.date_input("",[datetime.date.today(), datetime.date.today()+datetime.timedelta(days=30)],label_visibility='collapsed',
+                                  key=f"date_{key_suffix}")
         
         s_col2_1, s_col2_2 = st.columns((4, 6), gap = 'large')
         s_col2_1.write('훈련 유형 : ')
@@ -179,7 +189,7 @@ with tab_rank:
                                                     '4차산업혁명인력양성훈련','K-디지털 트레이닝','K-디지털 기초역량훈련',
                                                     '플랫폼종사자훈련','산업구조변화대응','중장년경력설계카운슬링','실업자 원격훈련',
                                                     '근로자 원격훈련','근로자 외국어훈련'],
-                                        label_visibility = 'collapsed')
+                                        label_visibility = 'collapsed',key=f"multiselect_{key_suffix}")
             tr_option_code = {
                 '국민내일배움카드(일반)':'C0061',
                 '국민내일배움카드(구직자)': 'C0061S', 
@@ -214,19 +224,29 @@ with tab_rank:
         s_col3_1, s_col3_2 = st.columns((4, 6), gap = 'large')
         s_col3_1.write('훈련 과정명 : ')
         with s_col3_2:
-            tr_name = st.text_input('',placeholder='훈련 과정명을 입력해주세요.',label_visibility='collapsed')
+            tr_name = st.text_input('',placeholder='훈련 과정명을 입력해주세요.',label_visibility='collapsed',key=f"name_{key_suffix}")
             tr_name = quote(tr_name, safe='')
 
-        s_col4_1, s_col4_2 = st.columns((4, 6), gap = 'large')
-        s_col4_1.write('훈련 기관명 : ')
-        with s_col4_2:
-            tr_company = st.text_input('',placeholder='훈련 기관명을 입력해주세요.',label_visibility='collapsed')
-            tr_company = quote(tr_company, safe='')
+        tr_company = ''
+        if show_company:
+            s_col4_1, s_col4_2 = st.columns((4, 6), gap = 'large')
+            s_col4_1.write('훈련 기관명 : ')
+            with s_col4_2:
+                tr_company = st.text_input('',placeholder='훈련 기관명을 입력해주세요.',
+                                         label_visibility='collapsed', 
+                                         key=f"company_{key_suffix}")
+                tr_company = quote(tr_company, safe='')
+    
+    return {'tr_open':tr_open, 'tr_option_codes':tr_option_codes, 'tr_name':tr_name, 'tr_company':tr_company}
+
+
+with tab_rank:
+    result1 = eda("first", show_company=True)
     try:
-        df = list_api(tr_open[0],tr_open[1],tr_option_codes,tr_name,tr_company)
+        df = list_api(result1['tr_open'][0],result1['tr_open'][1],result1['tr_option_codes'],result1['tr_name'],result1['tr_company'])
     except IndexError:
         tr_open = (datetime.date.today(),datetime.date.today())
-        df = list_api(tr_open[0],tr_open[1],tr_option_codes,tr_name,tr_company)
+        df = list_api(result1['tr_open'][0],result1['tr_open'][1],result1['tr_option_codes'],result1['tr_name'],result1['tr_company'])
 
     df = df.drop(['eiEmplCnt3Gt10','ncsCd','instCd','trngAreaCd','trprId','trainTargetCd',
                   'trainstCstId','contents','titleIcon'],axis=1)
@@ -238,3 +258,39 @@ with tab_rank:
     df = df.reset_index()
 
     st.dataframe(df)
+
+with tab_weniv:
+    # 선택 위젯 레이아웃 설정
+    # _, s_col1, _, s_col2 = st.columns((3.8, 1.2, 4, 1), gap = 'large')
+    # col1, col2 = st.columns(2, gap = 'large')
+    
+    # with col1:
+    #     col1_1, col1_2, col1_3 = st.columns(3)
+    #     col1_1.metric(label="달러USD", value="1,276.20 원", delta="-12.00원")
+    #     col1_2.metric(label="일본JPY", value="958.63 원", delta="-7.44 원")
+    #     col1_3.metric(label="유럽연합EUR", value="1,335.82 원", delta="11.44 원")
+    
+    # with col2:
+    #     pass
+
+    st.dataframe(weniv_kdt_list, use_container_width=True)
+
+with tab_est:
+    result2 = eda("second", show_company=False)
+    try:
+        df = list_api(result2['tr_open'][0],result2['tr_open'][1],result2['tr_option_codes'],result2['tr_name'],'이스트소프트')
+    except IndexError:
+        tr_open = (datetime.date.today(),datetime.date.today())
+        df = list_api(result2['tr_open'][0],result2['tr_open'][1],result2['tr_option_codes'],result2['tr_name'],'이스트소프트')
+
+    df = df.drop(['eiEmplCnt3Gt10','ncsCd','instCd','trngAreaCd','trprId','trainTargetCd',
+                  'trainstCstId','contents','titleIcon'],axis=1)
+    columns  = ['훈련 시작일', '훈련 종료일', '기업명', '제목', '수강신청 인원',
+       '정원', '수강비', '실제 훈련비', '고용보험 3개월 취업인원 수', '고용보험 3개월 취업률',
+       '고용보험 6개월 취업률', '훈련 과정 순차', '등급', '훈련 대상', '주소',
+       '전화번호', '제목 링크', '부제목 링크']
+    df = df[columns] 
+    df = df.reset_index()
+
+    st.dataframe(df)
+
