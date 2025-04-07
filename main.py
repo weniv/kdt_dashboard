@@ -256,8 +256,21 @@ with tab_rank:
        '전화번호', '제목 링크', '부제목 링크']
     df = df[columns] 
     df = df.reset_index()
+    df['수강신청 인원'] = df['수강신청 인원'].astype('int')
 
     st.dataframe(df)
+
+    @st.cache_data
+    def convert_df(df):
+        return df.to_csv().encode("cp949")
+
+    csv = convert_df(df)
+    st.download_button(
+        label="CSV 파일 다운로드",
+        data=csv,
+        file_name="large_df.csv",
+        mime="text/csv",
+    )
 
 with tab_weniv:
     # 선택 위젯 레이아웃 설정
