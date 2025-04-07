@@ -259,18 +259,49 @@ with tab_rank:
     df['수강신청 인원'] = df['수강신청 인원'].astype('int')
 
     st.dataframe(df)
+    
+    if df.shape[0]>=500:
+        @st.cache_data
+        def convert_df(df):
+            try:
+                # 데이터프레임 내의 모든 문자열 값에서 문제가 되는 특수문자 치환
+                # 더 광범위한 특수문자 처리
+                for col in df.select_dtypes(include=['object']).columns:
+                    df[col] = df[col].astype(str).str.replace('\xa0', ' ')  # 비분리 공백 처리
+                    df[col] = df[col].str.replace('\u2013', '-')  # Em dash 처리
+                    df[col] = df[col].str.replace('\u2014', '-')  # En dash 처리
+                    # 추가 특수문자가 있다면 여기에 더 추가
+                
+                return df.to_csv(encoding="cp949").encode("cp949")
+            except UnicodeEncodeError as e:
+                # 어떤 문자가 문제인지 로그로 확인
+                print(f"인코딩 오류: {e}")
+                
+                # 실패 위치의 문자 확인 (에러 메시지에서 위치 추출)
+                error_msg = str(e)
+                import re
+                position_match = re.search(r'position (\d+)', error_msg)
+                if position_match:
+                    position = int(position_match.group(1))
+                    csv_data = df.to_csv()
+                    if position < len(csv_data):
+                        problem_char = csv_data[position]
+                        print(f"문제 문자: {problem_char}, 유니코드: {ord(problem_char):x}")
+                
+                # 마지막 수단: euc-kr로 시도
+                try:
+                    return df.to_csv(encoding="euc-kr").encode("euc-kr")
+                except:
+                    # 모든 방법 실패 시 utf-8 사용
+                    return df.to_csv(encoding="utf-8").encode("utf-8")
 
-    @st.cache_data
-    def convert_df(df):
-        return df.to_csv().encode("cp949")
-
-    csv = convert_df(df)
-    st.download_button(
-        label="CSV 파일 다운로드",
-        data=csv,
-        file_name="large_df.csv",
-        mime="text/csv",
-    )
+        csv = convert_df(df)
+        st.download_button(
+            label="CSV 파일 다운로드",
+            data=csv,
+            file_name="large_df.csv",
+            mime="text/csv",
+        )
 
 with tab_weniv:
     # 선택 위젯 레이아웃 설정
