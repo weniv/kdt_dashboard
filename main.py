@@ -243,41 +243,38 @@ def eda(key_suffix, show_company=True):
 with tab_rank:
     result1 = eda("first", show_company=True)
     try:
-        df = list_api(result1['tr_open'][0],result1['tr_open'][1],result1['tr_option_codes'],result1['tr_name'],result1['tr_company'])
+        df = list_api(result1['tr_open'][0], result1['tr_open'][1], result1['tr_option_codes'], result1['tr_name'], result1['tr_company'])
     except IndexError:
-        tr_open = (datetime.date.today(),datetime.date.today())
-        df = list_api(result1['tr_open'][0],result1['tr_open'][1],result1['tr_option_codes'],result1['tr_name'],result1['tr_company'])
+        today = datetime.date.today()
+        df = list_api(today, today, result1['tr_option_codes'], result1['tr_name'], result1['tr_company'])
 
     df = df.drop(['eiEmplCnt3Gt10','ncsCd','instCd','trngAreaCd','trprId','trainTargetCd',
-                  'trainstCstId','contents','titleIcon'],axis=1)
-    columns  = ['훈련 시작일', '훈련 종료일', '기업명', '제목', '수강신청 인원',
-       '정원', '수강비', '실제 훈련비', '고용보험 3개월 취업인원 수', '고용보험 3개월 취업률',
-       '고용보험 6개월 취업률', '훈련 과정 순차', '등급', '훈련 대상', '주소',
-       '전화번호', '제목 링크', '부제목 링크']
+                'trainstCstId','contents','titleIcon'], axis=1)
+    columns = ['훈련 시작일', '훈련 종료일', '기업명', '제목', '수강신청 인원',
+    '정원', '수강비', '실제 훈련비', '고용보험 3개월 취업인원 수', '고용보험 3개월 취업률',
+    '고용보험 6개월 취업률', '훈련 과정 순차', '등급', '훈련 대상', '주소',
+    '전화번호', '제목 링크', '부제목 링크']
     df = df[columns] 
     df = df.reset_index()
     df['수강신청 인원'] = df['수강신청 인원'].astype('int')
 
     st.dataframe(df)
-    
-    if df.shape[0]>=500:
+
+    if df.shape[0] >= 500:
         @st.cache_data
         def convert_df(df):
             try:
                 # 데이터프레임 내의 모든 문자열 값에서 문제가 되는 특수문자 치환
-                # 더 광범위한 특수문자 처리
                 for col in df.select_dtypes(include=['object']).columns:
                     df[col] = df[col].astype(str).str.replace('\xa0', ' ')  # 비분리 공백 처리
                     df[col] = df[col].str.replace('\u2013', '-')  # Em dash 처리
                     df[col] = df[col].str.replace('\u2014', '-')  # En dash 처리
-                    # 추가 특수문자가 있다면 여기에 더 추가
-                
+                    
                 return df.to_csv(encoding="cp949").encode("cp949")
             except UnicodeEncodeError as e:
-                # 어떤 문자가 문제인지 로그로 확인
                 print(f"인코딩 오류: {e}")
                 
-                # 실패 위치의 문자 확인 (에러 메시지에서 위치 추출)
+                # 실패 위치의 문자 확인
                 error_msg = str(e)
                 import re
                 position_match = re.search(r'position (\d+)', error_msg)
