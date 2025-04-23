@@ -35,18 +35,22 @@ tab_rank, tab_weniv, tab_est = st.tabs(['KDT 목록','위니브 KDT 목록','이
 # 목록 API 불러오기    
 def list_api(start_date, end_date, tr_option, tr_name, tr_company):
     df = pd.DataFrame({})
+    
+    # 첫 페이지를 호출하여 총 데이터 수 확인
+    df_first, data_count = list_api_param(1, start_date, end_date, tr_option, tr_name, tr_company)
+    df = pd.concat([df, df_first])
+    
+    # 총 페이지 수 계산 (각 페이지는 100개 항목)
+    total_pages = (int(data_count) + 99) // 100  # 올림 연산
+    st.write("데이터 로딩 중...")
 
-    for i in range(1,6):
-        df_new,x = list_api_param(i,start_date,end_date,tr_option,tr_name,tr_company)
-        df = pd.concat([df,df_new])
+    # 나머지 페이지 호출 (2페이지부터)
+    for i in range(2, total_pages + 1):  # 너무 많은 요청 방지를 위해 최대 50페이지로 제한
+        df_new, _ = list_api_param(i, start_date, end_date, tr_option, tr_name, tr_company)
+        df = pd.concat([df, df_new])
     
+    st.write(f"총 {data_count}개 중 {df.shape[0]}개 데이터 로드 완료")
     return df
-    
-# def list_api_100plus():
-#     df,data_count=list_api_param(list_url,1)
-#     for i in range(2,int(data_count/100)+1):
-#         df_new,x = list_api_param(list_url,i)
-#         df = pd.concat([df,df_new])
 
 def list_api_param(i,start_date,end_date,tr_option,tr_name,tr_company):
     list_url = 'https://www.work24.go.kr/cm/openApi/call/hr/callOpenApiSvcInfo310L01.do'
@@ -293,6 +297,7 @@ with tab_rank:
                     return df.to_csv(encoding="utf-8").encode("utf-8")
 
         csv = convert_df(df)
+        st.write(f"데이터프레임 행 수: {df.shape[0]}")
         st.download_button(
             label="CSV 파일 다운로드",
             data=csv,
