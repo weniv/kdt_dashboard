@@ -3,9 +3,8 @@ import pandas as pd
 import requests
 import json
 import datetime
-import time
-from datetime import datetime, timedelta
 from urllib.parse import quote
+import time
 
 service_key = {
     'ntlc_train' : '9f62fae1-f506-4e5a-be77-ff5385d09f23', # 국민내일배움카드 훈련과정	
@@ -24,26 +23,8 @@ st.set_page_config(
 def check_password():
     """비밀번호 확인 및 세션 관리 함수"""
     
-    # 세션 타임아웃 체크 (1시간 = 3600초)
+    # 세션 만료 시간 (초 단위: 1시간 = 3600초)
     SESSION_TIMEOUT = 3600
-    
-    def is_session_valid():
-        """세션이 유효한지 확인"""
-        if "login_time" not in st.session_state:
-            return False
-        
-        current_time = time.time()
-        login_time = st.session_state["login_time"]
-        
-        # 1시간이 지났는지 확인
-        if current_time - login_time > SESSION_TIMEOUT:
-            # 세션 만료 - 모든 인증 정보 삭제
-            st.session_state["password_correct"] = False
-            if "login_time" in st.session_state:
-                del st.session_state["login_time"]
-            return False
-        
-        return True
     
     def password_entered():
         """비밀번호 입력 처리"""
@@ -57,17 +38,29 @@ def check_password():
         else:
             st.session_state["password_correct"] = False
 
-    # 기존 세션이 있는 경우 유효성 확인
-    if st.session_state.get("password_correct", False):
-        if is_session_valid():
+    def is_session_expired():
+        """세션 만료 확인"""
+        if "login_time" not in st.session_state:
             return True
-        else:
-            # 세션 만료 메시지
+        
+        current_time = time.time()
+        elapsed_time = current_time - st.session_state["login_time"]
+        
+        return elapsed_time > SESSION_TIMEOUT
+
+    # 세션 만료 확인
+    if "password_correct" in st.session_state and st.session_state["password_correct"]:
+        if is_session_expired():
+            # 세션 만료 시 로그인 상태 초기화
+            st.session_state["password_correct"] = False
+            if "login_time" in st.session_state:
+                del st.session_state["login_time"]
             st.warning("⏰ 세션이 만료되었습니다. 다시 로그인해주세요.")
-            time.sleep(1)  # 잠깐 메시지 표시
-    
-    # 인증이 필요한 경우
-    if not st.session_state.get("password_correct", False):
+            st.rerun()
+
+    # 인증 상태 확인
+    if "password_correct" not in st.session_state:
+        # 처음 접속 시
         show_login_page()
         st.text_input(
             "🔑 비밀번호를 입력하세요", 
@@ -76,14 +69,40 @@ def check_password():
             key="password",
             placeholder="Password"
         )
-        
-        # 로그인 실패 메시지
-        if "password" in st.session_state and st.session_state.get("password_correct", False) == False:
-            st.error("❌ 비밀번호가 틀렸습니다. 다시 시도해주세요.")
-            
         return False
-    
-    return True
+        
+    elif not st.session_state["password_correct"]:
+        # 비밀번호가 틀린 경우
+        show_login_page()
+        st.text_input(
+            "🔑 비밀번호를 입력하세요", 
+            type="password", 
+            on_change=password_entered, 
+            key="password",
+            placeholder="Password"
+        )
+        st.error("❌ 비밀번호가 틀렸습니다. 다시 시도해주세요.")
+        return False
+        
+    else:
+        # 인증 성공 - 남은 세션 시간 표시
+        remaining_time = SESSION_TIMEOUT - (time.time() - st.session_state["login_time"])
+        remaining_minutes = int(remaining_time // 60)
+        remaining_seconds = int(remaining_time % 60)
+        
+        # 사이드바에 세션 정보 표시
+        with st.sidebar:
+            st.success("✅ 로그인됨")
+            st.info(f"🕒 남은 세션 시간: {remaining_minutes}분 {remaining_seconds}초")
+            
+            # 로그아웃 버튼
+            if st.button("🚪 로그아웃"):
+                st.session_state["password_correct"] = False
+                if "login_time" in st.session_state:
+                    del st.session_state["login_time"]
+                st.rerun()
+        
+        return True
 
 def show_login_page():
     """로그인 페이지 UI"""
@@ -93,59 +112,23 @@ def show_login_page():
     with col2:
         st.markdown("""
         <div style='text-align: center; padding: 2rem 0;'>
-            <h1>🔒 KDT Dashboard Access</h1>
+            <h1>🔒 Private Access</h1>
             <p style='color: #666; font-size: 1.1rem;'>
                 이 대시보드는 비밀번호로 보호됩니다
             </p>
         </div>
         """, unsafe_allow_html=True)
 
-def show_session_info():
-    """세션 정보를 상단에 표시"""
-    if st.session_state.get("password_correct", False) and "login_time" in st.session_state:
-        login_time = st.session_state["login_time"]
-        current_time = time.time()
-        elapsed_time = current_time - login_time
-        remaining_time = 3600 - elapsed_time  # 1시간 - 경과시간
-        
-        col1, col2, col3, col4 = st.columns([6, 2, 1, 1])
-        
-        with col1:
-            st.title('KDT Dashboard')
-            
-        with col2:
-            # 세션 정보 표시
-            if remaining_time > 0:
-                hours = int(remaining_time // 3600)
-                minutes = int((remaining_time % 3600) // 60)
-                if hours > 0:
-                    st.metric("⏰ 세션 남은시간", f"{hours}시간 {minutes}분")
-                else:
-                    st.metric("⏰ 세션 남은시간", f"{minutes}분")
-        
-        with col3:
-            # 세션 연장 버튼
-            if st.button("🔄 연장", help="세션을 1시간 연장합니다"):
-                st.session_state["login_time"] = time.time()
-                st.success("세션이 연장되었습니다!")
-                st.rerun()
-                
-        with col4:
-            # 로그아웃 버튼
-            if st.button("🚪 로그아웃"):
-                for key in list(st.session_state.keys()):
-                    del st.session_state[key]
-                st.rerun()
-        
-        st.divider()
-        
-        # 로그인 시간 정보
-        login_datetime = datetime.fromtimestamp(login_time)
-        st.success(f"✅ {login_datetime.strftime('%Y-%m-%d %H:%M:%S')}에 로그인되었습니다!")
-
 def main_dashboard():
-    # 세션 정보 및 헤더 표시
-    show_session_info()
+    # 대시보드 타이틀
+    col1, col2, col3 = st.columns((3.5, 5.5, 1))
+
+    with col1:
+        st.write('')
+    with col2:
+        st.title('KDT Dashboard')  
+    with col3:
+        st.write('')
 
     tab_rank, tab_weniv = st.tabs(['KDT 목록','위니브 KDT 목록'])
 
@@ -227,19 +210,14 @@ def main_dashboard():
     def weniv_list_api(name):
         list_url = 'https://www.work24.go.kr/cm/openApi/call/hr/callOpenApiSvcInfo310L01.do'
         
-        # 날짜 계산 수정: datetime.date 대신 datetime.datetime 사용
-        today = datetime.now()
-        start_date = (today - timedelta(days=150)).strftime("%Y%m%d")
-        end_date = (today + timedelta(days=365)).strftime("%Y%m%d")
-        
         params ={
             'authKey' : '9f62fae1-f506-4e5a-be77-ff5385d09f23',
             'returnType':'JSON',
             'outType':2, #  - 1: 리스트, 2:상세 출력
             'pageNum':1, 
             'pageSize':100, 
-            'srchTraStDt': start_date,
-            'srchTraEndDt': end_date,
+            'srchTraStDt':(datetime.date.today()-datetime.timedelta(days=150)+datetime.timedelta(hours=9)).strftime("%Y%m%d"),
+            'srchTraEndDt':(datetime.date.today()+datetime.timedelta(days=365, hours=9)).strftime("%Y%m%d"),
             'sort':'ASC',
             'sortCol':'TRNG_BGDE',
             'srchTraProcessNm': name,
@@ -278,6 +256,25 @@ def main_dashboard():
         'realMan':'실제 훈련비',
     }
     weniv_kdt_list = weniv_kdt_list.rename(columns=new_column_names)
+
+    # --------------------[이스트 KDT List]--------------------
+    # est_kdt_list =list_api(tr_open[0],tr_open[1],tr_option_codes,tr_name,'이스트소프트')
+
+    # columns = ['traStartDate','traEndDate','subTitle','title','regCourseMan','yardMan','courseMan','realMan']
+    # est_kdt_list = est_kdt_list.reset_index()
+    # est_kdt_list = est_kdt_list[columns]
+    # new_column_names = {
+    #     'traStartDate':'훈련 시작일',
+    #     'traEndDate': '훈련 종료일',
+    #     'subTitle':'기업명',
+    #     'title':'제목',
+    #     'regCourseMan':'수강신청 인원',
+    #     'yardMan':'정원',
+    #     'courseMan':'수강비',
+    #     'realMan':'실제 훈련비',
+    # }
+    # est_kdt_list = est_kdt_list.rename(columns=new_column_names)
+
 
     # --------------------[데이터 시각화]--------------------
     def eda(key_suffix, show_company=True):
@@ -347,6 +344,7 @@ def main_dashboard():
         
         return {'tr_open':tr_open, 'tr_option_codes':tr_option_codes, 'tr_name':tr_name, 'tr_company':tr_company}
 
+
     with tab_rank:
         result1 = eda("first", show_company=True)
         try:
@@ -409,6 +407,19 @@ def main_dashboard():
             )
 
     with tab_weniv:
+        # 선택 위젯 레이아웃 설정
+        # _, s_col1, _, s_col2 = st.columns((3.8, 1.2, 4, 1), gap = 'large')
+        # col1, col2 = st.columns(2, gap = 'large')
+        
+        # with col1:
+        #     col1_1, col1_2, col1_3 = st.columns(3)
+        #     col1_1.metric(label="달러USD", value="1,276.20 원", delta="-12.00원")
+        #     col1_2.metric(label="일본JPY", value="958.63 원", delta="-7.44 원")
+        #     col1_3.metric(label="유럽연합EUR", value="1,335.82 원", delta="11.44 원")
+        
+        # with col2:
+        #     pass
+
         st.dataframe(weniv_kdt_list, use_container_width=True)
 
 # 메인 실행
