@@ -20,7 +20,28 @@ st.set_page_config(
 )
 
 def check_password():
-    """비밀번호 확인 함수"""
+    """비밀번호 확인 및 세션 관리 함수"""
+    
+    # 세션 타임아웃 체크 (1시간 = 3600초)
+    SESSION_TIMEOUT = 3600
+    
+    def is_session_valid():
+        """세션이 유효한지 확인"""
+        if "login_time" not in st.session_state:
+            return False
+        
+        current_time = time.time()
+        login_time = st.session_state["login_time"]
+        
+        # 1시간이 지났는지 확인
+        if current_time - login_time > SESSION_TIMEOUT:
+            # 세션 만료 - 모든 인증 정보 삭제
+            st.session_state["password_correct"] = False
+            if "login_time" in st.session_state:
+                del st.session_state["login_time"]
+            return False
+        
+        return True
     
     def password_entered():
         """비밀번호 입력 처리"""
@@ -29,13 +50,22 @@ def check_password():
         
         if st.session_state["password"] == correct_password:
             st.session_state["password_correct"] = True
+            st.session_state["login_time"] = time.time()  # 로그인 시간 저장
             del st.session_state["password"]  # 보안을 위해 삭제
         else:
             st.session_state["password_correct"] = False
 
-    # 인증 상태 확인
-    if "password_correct" not in st.session_state:
-        # 처음 접속 시
+    # 기존 세션이 있는 경우 유효성 확인
+    if st.session_state.get("password_correct", False):
+        if is_session_valid():
+            return True
+        else:
+            # 세션 만료 메시지
+            st.warning("⏰ 세션이 만료되었습니다. 다시 로그인해주세요.")
+            time.sleep(1)  # 잠깐 메시지 표시
+    
+    # 인증이 필요한 경우
+    if not st.session_state.get("password_correct", False):
         show_login_page()
         st.text_input(
             "🔑 비밀번호를 입력하세요", 
@@ -44,24 +74,14 @@ def check_password():
             key="password",
             placeholder="Password"
         )
-        return False
         
-    elif not st.session_state["password_correct"]:
-        # 비밀번호가 틀린 경우
-        show_login_page()
-        st.text_input(
-            "🔑 비밀번호를 입력하세요", 
-            type="password", 
-            on_change=password_entered, 
-            key="password",
-            placeholder="Password"
-        )
-        st.error("❌ 비밀번호가 틀렸습니다. 다시 시도해주세요.")
+        # 로그인 실패 메시지
+        if "password" in st.session_state and st.session_state.get("password_correct", False) == False:
+            st.error("❌ 비밀번호가 틀렸습니다. 다시 시도해주세요.")
+            
         return False
-        
-    else:
-        # 인증 성공
-        return True
+    
+    return True
 
 def show_login_page():
     """로그인 페이지 UI"""
@@ -71,14 +91,60 @@ def show_login_page():
     with col2:
         st.markdown("""
         <div style='text-align: center; padding: 2rem 0;'>
-            <h1>🔒 Private Access</h1>
+            <h1>🔒 KDT Dashboard Access</h1>
             <p style='color: #666; font-size: 1.1rem;'>
                 이 대시보드는 비밀번호로 보호됩니다
             </p>
         </div>
         """, unsafe_allow_html=True)
 
+def show_session_info():
+    """세션 정보를 상단에 표시"""
+    if st.session_state.get("password_correct", False) and "login_time" in st.session_state:
+        login_time = st.session_state["login_time"]
+        current_time = time.time()
+        elapsed_time = current_time - login_time
+        remaining_time = 3600 - elapsed_time  # 1시간 - 경과시간
+        
+        col1, col2, col3, col4 = st.columns([6, 2, 1, 1])
+        
+        with col1:
+            st.title('KDT Dashboard')
+            
+        with col2:
+            # 세션 정보 표시
+            if remaining_time > 0:
+                hours = int(remaining_time // 3600)
+                minutes = int((remaining_time % 3600) // 60)
+                if hours > 0:
+                    st.metric("⏰ 세션 남은시간", f"{hours}시간 {minutes}분")
+                else:
+                    st.metric("⏰ 세션 남은시간", f"{minutes}분")
+        
+        with col3:
+            # 세션 연장 버튼
+            if st.button("🔄 연장", help="세션을 1시간 연장합니다"):
+                st.session_state["login_time"] = time.time()
+                st.success("세션이 연장되었습니다!")
+                st.rerun()
+                
+        with col4:
+            # 로그아웃 버튼
+            if st.button("🚪 로그아웃"):
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.rerun()
+        
+        st.divider()
+        
+        # 로그인 시간 정보
+        login_datetime = datetime.fromtimestamp(login_time)
+        st.success(f"✅ {login_datetime.strftime('%Y-%m-%d %H:%M:%S')}에 로그인되었습니다!")
+
 def main_dashboard():
+
+    show_session_info()
+
     # 대시보드 타이틀
     col1, col2, col3 = st.columns((3.5, 5.5, 1))
 
@@ -381,6 +447,55 @@ def main_dashboard():
 
         st.dataframe(weniv_kdt_list, use_container_width=True)
 
+# 사이드바 세션 정보
+with st.sidebar:
+    if st.session_state.get("password_correct", False):
+        st.success("🔓 로그인됨")
+        
+        # 세션 정보 표시
+        if "login_time" in st.session_state:
+            login_time = st.session_state["login_time"]
+            current_time = time.time()
+            elapsed_time = current_time - login_time
+            remaining_time = 3600 - elapsed_time
+            
+            login_datetime = datetime.fromtimestamp(login_time)
+            st.info(f"🕐 로그인: {login_datetime.strftime('%H:%M:%S')}")
+            
+            if remaining_time > 0:
+                minutes_left = int(remaining_time // 60)
+                st.info(f"⏰ 남은시간: {minutes_left}분")
+                
+                # 진행률 바
+                progress = (3600 - remaining_time) / 3600
+                st.progress(progress)
+            else:
+                st.warning("⚠️ 세션 만료됨")
+        
+        st.markdown("---")
+        st.markdown("### 📋 메뉴")
+        st.markdown("- 📊 KDT 목록")
+        st.markdown("- 🏢 위니브 KDT 목록")
+        st.markdown("---")
+        st.markdown("### ℹ️ 세션 정보")
+        st.info("""
+        **세션 관리:**
+        - 세션 유지시간: 1시간
+        - 새로고침해도 유지됨
+        - 세션 연장 가능
+        - 자동 로그아웃
+        """)
+    else:
+        st.markdown("### 🔒 KDT Dashboard")
+        st.warning("로그인이 필요합니다")
+        st.markdown("---")
+        st.info("""
+        **로그인 후 이용 가능:**
+        - KDT 훈련과정 검색
+        - 위니브 KDT 목록 조회
+        - 데이터 다운로드
+        """)
+        
 # 메인 실행
 if check_password():
     main_dashboard()
