@@ -147,17 +147,6 @@ def main_dashboard():
     # 세션 정보 및 헤더 표시
     show_session_info()
 
-def main_dashboard():
-    # 대시보드 타이틀
-    col1, col2, col3 = st.columns((3.5, 5.5, 1))
-
-    with col1:
-        st.write('')
-    with col2:
-        st.title('KDT Dashboard')  
-    with col3:
-        st.write('')
-
     tab_rank, tab_weniv = st.tabs(['KDT 목록','위니브 KDT 목록'])
 
     # --------------------[데이터 관련]--------------------
@@ -238,14 +227,19 @@ def main_dashboard():
     def weniv_list_api(name):
         list_url = 'https://www.work24.go.kr/cm/openApi/call/hr/callOpenApiSvcInfo310L01.do'
         
+        # 날짜 계산 수정: datetime.date 대신 datetime.datetime 사용
+        today = datetime.now()
+        start_date = (today - timedelta(days=150)).strftime("%Y%m%d")
+        end_date = (today + timedelta(days=365)).strftime("%Y%m%d")
+        
         params ={
             'authKey' : '9f62fae1-f506-4e5a-be77-ff5385d09f23',
             'returnType':'JSON',
             'outType':2, #  - 1: 리스트, 2:상세 출력
             'pageNum':1, 
             'pageSize':100, 
-            'srchTraStDt':(datetime.date.today()-datetime.timedelta(days=150)+datetime.timedelta(hours=9)).strftime("%Y%m%d"),
-            'srchTraEndDt':(datetime.date.today()+datetime.timedelta(days=365, hours=9)).strftime("%Y%m%d"),
+            'srchTraStDt': start_date,
+            'srchTraEndDt': end_date,
             'sort':'ASC',
             'sortCol':'TRNG_BGDE',
             'srchTraProcessNm': name,
@@ -284,25 +278,6 @@ def main_dashboard():
         'realMan':'실제 훈련비',
     }
     weniv_kdt_list = weniv_kdt_list.rename(columns=new_column_names)
-
-    # --------------------[이스트 KDT List]--------------------
-    # est_kdt_list =list_api(tr_open[0],tr_open[1],tr_option_codes,tr_name,'이스트소프트')
-
-    # columns = ['traStartDate','traEndDate','subTitle','title','regCourseMan','yardMan','courseMan','realMan']
-    # est_kdt_list = est_kdt_list.reset_index()
-    # est_kdt_list = est_kdt_list[columns]
-    # new_column_names = {
-    #     'traStartDate':'훈련 시작일',
-    #     'traEndDate': '훈련 종료일',
-    #     'subTitle':'기업명',
-    #     'title':'제목',
-    #     'regCourseMan':'수강신청 인원',
-    #     'yardMan':'정원',
-    #     'courseMan':'수강비',
-    #     'realMan':'실제 훈련비',
-    # }
-    # est_kdt_list = est_kdt_list.rename(columns=new_column_names)
-
 
     # --------------------[데이터 시각화]--------------------
     def eda(key_suffix, show_company=True):
@@ -434,19 +409,6 @@ def main_dashboard():
             )
 
     with tab_weniv:
-        # 선택 위젯 레이아웃 설정
-        # _, s_col1, _, s_col2 = st.columns((3.8, 1.2, 4, 1), gap = 'large')
-        # col1, col2 = st.columns(2, gap = 'large')
-        
-        # with col1:
-        #     col1_1, col1_2, col1_3 = st.columns(3)
-        #     col1_1.metric(label="달러USD", value="1,276.20 원", delta="-12.00원")
-        #     col1_2.metric(label="일본JPY", value="958.63 원", delta="-7.44 원")
-        #     col1_3.metric(label="유럽연합EUR", value="1,335.82 원", delta="11.44 원")
-        
-        # with col2:
-        #     pass
-
         st.dataframe(weniv_kdt_list, use_container_width=True)
 
 # 메인 실행
