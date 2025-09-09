@@ -144,18 +144,8 @@ def show_session_info():
         st.success(f"✅ {login_datetime.strftime('%Y-%m-%d %H:%M:%S')}에 로그인되었습니다!")
 
 def main_dashboard():
-
+    # 세션 정보 및 헤더 표시
     show_session_info()
-
-    # 대시보드 타이틀
-    col1, col2, col3 = st.columns((3.5, 5.5, 1))
-
-    with col1:
-        st.write('')
-    with col2:
-        st.title('KDT Dashboard')  
-    with col3:
-        st.write('')
 
     tab_rank, tab_weniv = st.tabs(['KDT 목록','위니브 KDT 목록'])
 
@@ -284,25 +274,6 @@ def main_dashboard():
     }
     weniv_kdt_list = weniv_kdt_list.rename(columns=new_column_names)
 
-    # --------------------[이스트 KDT List]--------------------
-    # est_kdt_list =list_api(tr_open[0],tr_open[1],tr_option_codes,tr_name,'이스트소프트')
-
-    # columns = ['traStartDate','traEndDate','subTitle','title','regCourseMan','yardMan','courseMan','realMan']
-    # est_kdt_list = est_kdt_list.reset_index()
-    # est_kdt_list = est_kdt_list[columns]
-    # new_column_names = {
-    #     'traStartDate':'훈련 시작일',
-    #     'traEndDate': '훈련 종료일',
-    #     'subTitle':'기업명',
-    #     'title':'제목',
-    #     'regCourseMan':'수강신청 인원',
-    #     'yardMan':'정원',
-    #     'courseMan':'수강비',
-    #     'realMan':'실제 훈련비',
-    # }
-    # est_kdt_list = est_kdt_list.rename(columns=new_column_names)
-
-
     # --------------------[데이터 시각화]--------------------
     def eda(key_suffix, show_company=True):
         with st.expander("옵션 선택"):
@@ -371,7 +342,6 @@ def main_dashboard():
         
         return {'tr_open':tr_open, 'tr_option_codes':tr_option_codes, 'tr_name':tr_name, 'tr_company':tr_company}
 
-
     with tab_rank:
         result1 = eda("first", show_company=True)
         try:
@@ -434,70 +404,8 @@ def main_dashboard():
             )
 
     with tab_weniv:
-        # 선택 위젯 레이아웃 설정
-        # _, s_col1, _, s_col2 = st.columns((3.8, 1.2, 4, 1), gap = 'large')
-        # col1, col2 = st.columns(2, gap = 'large')
-        
-        # with col1:
-        #     col1_1, col1_2, col1_3 = st.columns(3)
-        #     col1_1.metric(label="달러USD", value="1,276.20 원", delta="-12.00원")
-        #     col1_2.metric(label="일본JPY", value="958.63 원", delta="-7.44 원")
-        #     col1_3.metric(label="유럽연합EUR", value="1,335.82 원", delta="11.44 원")
-        
-        # with col2:
-        #     pass
-
         st.dataframe(weniv_kdt_list, use_container_width=True)
 
-# 사이드바 세션 정보
-with st.sidebar:
-    if st.session_state.get("password_correct", False):
-        st.success("🔓 로그인됨")
-        
-        # 세션 정보 표시
-        if "login_time" in st.session_state:
-            login_time = st.session_state["login_time"]
-            current_time = time.time()
-            elapsed_time = current_time - login_time
-            remaining_time = 3600 - elapsed_time
-            
-            login_datetime = datetime.fromtimestamp(login_time)
-            st.info(f"🕐 로그인: {login_datetime.strftime('%H:%M:%S')}")
-            
-            if remaining_time > 0:
-                minutes_left = int(remaining_time // 60)
-                st.info(f"⏰ 남은시간: {minutes_left}분")
-                
-                # 진행률 바
-                progress = (3600 - remaining_time) / 3600
-                st.progress(progress)
-            else:
-                st.warning("⚠️ 세션 만료됨")
-        
-        st.markdown("---")
-        st.markdown("### 📋 메뉴")
-        st.markdown("- 📊 KDT 목록")
-        st.markdown("- 🏢 위니브 KDT 목록")
-        st.markdown("---")
-        st.markdown("### ℹ️ 세션 정보")
-        st.info("""
-        **세션 관리:**
-        - 세션 유지시간: 1시간
-        - 새로고침해도 유지됨
-        - 세션 연장 가능
-        - 자동 로그아웃
-        """)
-    else:
-        st.markdown("### 🔒 KDT Dashboard")
-        st.warning("로그인이 필요합니다")
-        st.markdown("---")
-        st.info("""
-        **로그인 후 이용 가능:**
-        - KDT 훈련과정 검색
-        - 위니브 KDT 목록 조회
-        - 데이터 다운로드
-        """)
-        
 # 메인 실행
 if check_password():
     main_dashboard()
