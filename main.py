@@ -4,7 +4,6 @@ import requests
 import json
 import datetime
 from urllib.parse import quote
-import time
 
 service_key = {
     'ntlc_train' : '9f62fae1-f506-4e5a-be77-ff5385d09f23', # 국민내일배움카드 훈련과정	
@@ -21,49 +20,7 @@ st.set_page_config(
 )
 
 def check_password():
-    """비밀번호 확인 및 세션 관리 함수"""
-    
-    # 세션 만료 시간 (초 단위: 1시간 = 3600초)
-    SESSION_TIMEOUT = 3600
-    
-    # 세션 파일 경로 (임시 디렉토리 사용)
-    session_dir = "temp_sessions"
-    if not os.path.exists(session_dir):
-        os.makedirs(session_dir)
-    
-    def get_session_id():
-        """고유한 세션 ID 생성"""
-        if "session_id" not in st.session_state:
-            # 브라우저별 고유 ID 생성 (IP + User Agent 기반)
-            user_info = str(st.context.headers.get("x-forwarded-for", "unknown")) + str(st.context.headers.get("user-agent", "unknown"))
-            st.session_state["session_id"] = hashlib.md5(user_info.encode()).hexdigest()
-        return st.session_state["session_id"]
-    
-    def save_session(session_id):
-        """세션 정보를 파일에 저장"""
-        session_file = os.path.join(session_dir, f"{session_id}.txt")
-        with open(session_file, "w") as f:
-            f.write(str(time.time()))
-    
-    def load_session(session_id):
-        """파일에서 세션 정보 로드"""
-        session_file = os.path.join(session_dir, f"{session_id}.txt")
-        try:
-            if os.path.exists(session_file):
-                with open(session_file, "r") as f:
-                    return float(f.read().strip())
-        except:
-            pass
-        return None
-    
-    def delete_session(session_id):
-        """세션 파일 삭제"""
-        session_file = os.path.join(session_dir, f"{session_id}.txt")
-        try:
-            if os.path.exists(session_file):
-                os.remove(session_file)
-        except:
-            pass
+    """비밀번호 확인 함수"""
     
     def password_entered():
         """비밀번호 입력 처리"""
@@ -72,47 +29,13 @@ def check_password():
         
         if st.session_state["password"] == correct_password:
             st.session_state["password_correct"] = True
-            session_id = get_session_id()
-            save_session(session_id)  # 파일에 세션 저장
             del st.session_state["password"]  # 보안을 위해 삭제
         else:
             st.session_state["password_correct"] = False
 
-    def is_session_expired():
-        """세션 만료 확인"""
-        session_id = get_session_id()
-        login_time = load_session(session_id)
-        
-        if login_time is None:
-            return True
-        
-        current_time = time.time()
-        elapsed_time = current_time - login_time
-        
-        if elapsed_time > SESSION_TIMEOUT:
-            delete_session(session_id)  # 만료된 세션 파일 삭제
-            return True
-            
-        return False
-
-    # 세션 상태 초기화 (새로고침 시에도 파일에서 로드)
-    if "password_correct" not in st.session_state:
-        if not is_session_expired():
-            st.session_state["password_correct"] = True
-        else:
-            st.session_state["password_correct"] = False
-
-    # 세션 만료 확인
-    if st.session_state.get("password_correct", False):
-        if is_session_expired():
-            # 세션 만료 시 로그인 상태 초기화
-            st.session_state["password_correct"] = False
-            st.warning("⏰ 세션이 만료되었습니다. 다시 로그인해주세요.")
-            st.rerun()
-
     # 인증 상태 확인
-    if not st.session_state.get("password_correct", False):
-        # 로그인이 필요한 경우
+    if "password_correct" not in st.session_state:
+        # 처음 접속 시
         show_login_page()
         st.text_input(
             "🔑 비밀번호를 입력하세요", 
@@ -121,34 +44,23 @@ def check_password():
             key="password",
             placeholder="Password"
         )
+        return False
         
-        # 비밀번호가 틀린 경우에만 에러 메시지 표시
-        if "password" in st.session_state and st.session_state.get("password_correct", False) == False:
-            st.error("❌ 비밀번호가 틀렸습니다. 다시 시도해주세요.")
-            
+    elif not st.session_state["password_correct"]:
+        # 비밀번호가 틀린 경우
+        show_login_page()
+        st.text_input(
+            "🔑 비밀번호를 입력하세요", 
+            type="password", 
+            on_change=password_entered, 
+            key="password",
+            placeholder="Password"
+        )
+        st.error("❌ 비밀번호가 틀렸습니다. 다시 시도해주세요.")
         return False
         
     else:
-        # 인증 성공 - 남은 세션 시간 표시
-        session_id = get_session_id()
-        login_time = load_session(session_id)
-        
-        if login_time:
-            remaining_time = SESSION_TIMEOUT - (time.time() - login_time)
-            remaining_minutes = int(remaining_time // 60)
-            remaining_seconds = int(remaining_time % 60)
-            
-            # 사이드바에 세션 정보 표시
-            with st.sidebar:
-                st.success("✅ 로그인됨")
-                st.info(f"🕒 남은 세션 시간: {remaining_minutes}분 {remaining_seconds}초")
-                
-                # 로그아웃 버튼
-                if st.button("🚪 로그아웃"):
-                    st.session_state["password_correct"] = False
-                    delete_session(session_id)
-                    st.rerun()
-        
+        # 인증 성공
         return True
 
 def show_login_page():
